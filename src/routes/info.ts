@@ -9,5 +9,6 @@ export const info = new Elysia({ prefix: "/info" }).get("", () => ({
     time: "/time",
     socials: "/socials/:name",
     info: "/info",
+    docs: "/docs",
   },
 }))
