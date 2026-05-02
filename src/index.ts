@@ -11,7 +11,7 @@ const app = new Elysia()
       path: "/docs",
       documentation: {
         info: {
-          title: "Personal API",
+          title: "Fumi's Personal API",
           version: "1.0.0",
           description: "A personal serverless API",
         },
