@@ -1,0 +1,17 @@
+{
+  "name": "personal-api",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {
+    "elysia": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
