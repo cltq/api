@@ -20,17 +20,17 @@ const app = new Elysia()
     }),
   )
   .get("/", ({ redirect }) => redirect("/docs"))
-  .get("/openapi.yaml", async ({ server }) => {
-    if (!server) return new Response("Server not ready", { status: 503 })
-    const res = await server.fetch(new Request("http://localhost/docs/json"))
-    const spec = await res.json()
-    return new Response(YAML.dump(spec), {
-      headers: { "content-type": "text/yaml; charset=utf-8" },
-    })
-  })
   .use(health)
   .use(time)
   .use(socialsRoute)
   .use(info)
+
+app.get("/openapi.yaml", async () => {
+  const res = await app.fetch(new Request("http://localhost/docs/json"))
+  const spec = await res.json()
+  return new Response(YAML.dump(spec), {
+    headers: { "content-type": "text/yaml; charset=utf-8" },
+  })
+})
 
 export default app
