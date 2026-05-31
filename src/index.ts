@@ -5,6 +5,7 @@ import { health } from "./routes/health"
 import { time } from "./routes/time"
 import { socialsRoute } from "./routes/socials"
 import { info } from "./routes/info"
+import { promptpay } from "./routes/promptpay"
 
 const app = new Elysia()
   .use(
@@ -24,6 +25,7 @@ const app = new Elysia()
   .use(time)
   .use(socialsRoute)
   .use(info)
+  .use(promptpay)
 
 app.get("/openapi.yaml", async () => {
   const res = await app.fetch(new Request("http://localhost/docs/json"))
