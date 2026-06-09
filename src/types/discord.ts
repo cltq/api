@@ -15,6 +15,7 @@ export interface DiscordActivity {
   state: string | null
   emoji: string | null
   applicationId: string | null
+  icon: string | null
   timestamps: {
     start: number | null
     end: number | null
@@ -29,6 +30,7 @@ export interface DiscordPresence {
   mobile: boolean
   desktop: boolean
   web: boolean
+  guildId: string | null
 }
 
 export interface DiscordProfile {
@@ -39,6 +41,10 @@ export interface DiscordProfile {
   avatar: string | null
   banner: string | null
   accentColor: number | null
+  badges: string[]
+  premiumType: string | null
+  premiumBadge: string | null
+  guildId: string | null
   createdAt: string | null
 }
 
@@ -50,6 +56,11 @@ export interface DiscordUserPayload {
   avatar: string | null
   banner: string | null
   accentColor: string | null
+  badges: string[]
+  premiumType: string | null
+  premiumBadge: string | null
+  boostBadge: string | null
+  boostedSince: string | null
   status: "online" | "idle" | "dnd" | "offline"
   customStatus: string | null
   spotify: DiscordSpotify | null
@@ -57,6 +68,7 @@ export interface DiscordUserPayload {
   mobile: boolean
   desktop: boolean
   web: boolean
+  guildId: string | null
   createdAt: string | null
   updatedAt: number
 }

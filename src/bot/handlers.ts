@@ -1,8 +1,53 @@
-import type { Client, Presence, User, PartialUser } from "discord.js"
+import type { Client, Presence, User, PartialUser, Guild } from "discord.js"
 import type { RedisService } from "../redis/service"
 import { serializePresence, serializeProfileFromUser } from "./serializer"
+import { fetchDiscordUser, calculatePremiumBadge } from "../lib/discord"
 
-export function setupHandlers(client: Client, redis: RedisService, targetUserId: string): void {
+async function enrichPremiumBadge(
+  token: string,
+  userId: string,
+  payload: { premiumBadge: string | null; premiumType: string | null },
+): Promise<void> {
+  const data = await fetchDiscordUser(token, userId)
+  if (data) {
+    const planType = payload.premiumType
+    const fallback = planType === "Nitro" ? 2 : planType === "Nitro Classic" ? 1 : planType === "Nitro Basic" ? 3 : null
+    payload.premiumBadge = calculatePremiumBadge(data, fallback)
+  }
+}
+
+async function fetchAndPublishPresence(
+  client: Client,
+  redis: RedisService,
+  targetUserId: string,
+  guild?: Guild,
+): Promise<boolean> {
+  const guilds = guild ? [guild] : client.guilds.cache.values()
+  for (const g of guilds) {
+    try {
+      const member = await g.members.fetch({ user: targetUserId, force: true })
+      if (member.presence) {
+        const payload = serializePresence(member.presence)
+        if (payload) {
+          if (client.token) await enrichPremiumBadge(client.token, targetUserId, payload)
+          await redis.saveUser(targetUserId, payload)
+          await redis.publishUpdate(targetUserId, payload)
+          return true
+        }
+      }
+    } catch {
+      continue
+    }
+  }
+  return false
+}
+
+export function setupHandlers(
+  client: Client,
+  redis: RedisService,
+  targetUserId: string,
+  guildId?: string,
+): void {
   client.on("ready", async () => {
     console.log(`[Discord] Bot logged in as ${client.user?.tag}`)
 
@@ -10,23 +55,15 @@ export function setupHandlers(client: Client, redis: RedisService, targetUserId:
       const user = await client.users.fetch(targetUserId, { force: true })
       console.log(`[Discord] Target user found: ${user.tag} (${user.id})`)
 
-      for (const guild of client.guilds.cache.values()) {
-        try {
-          const member = await guild.members.fetch({ user: targetUserId, force: true })
-          if (member.presence) {
-            const payload = serializePresence(member.presence)
-            if (payload) {
-              await redis.saveUser(targetUserId, payload)
-              await redis.publishUpdate(targetUserId, payload)
-            }
-          }
-          return
-        } catch {
-          continue
-        }
+      const guild = guildId ? client.guilds.cache.get(guildId) : undefined
+      if (guildId && !guild) {
+        console.warn(`[Discord] Guild ${guildId} not found — bot may not be in it`)
       }
 
-      const fallback = serializeProfileFromUser(user)
+      const found = await fetchAndPublishPresence(client, redis, targetUserId, guild)
+      if (found) return
+
+      const fallback = serializeProfileFromUser(user, guild?.id ?? null)
       const data = {
         ...fallback,
         accentColor: fallback.accentColor
@@ -39,8 +76,11 @@ export function setupHandlers(client: Client, redis: RedisService, targetUserId:
         mobile: false,
         desktop: false,
         web: false,
+        boostBadge: null,
+        boostedSince: null,
         updatedAt: Date.now(),
       }
+      if (client.token) await enrichPremiumBadge(client.token, targetUserId, data)
       await redis.saveUser(targetUserId, data)
       await redis.publishUpdate(targetUserId, data)
     } catch (err) {
@@ -50,6 +90,7 @@ export function setupHandlers(client: Client, redis: RedisService, targetUserId:
 
   client.on("presenceUpdate", async (oldPresence: Presence | null, newPresence: Presence) => {
     if (newPresence.userId !== targetUserId) return
+    if (guildId && newPresence.guild?.id !== guildId) return
 
     const payload = serializePresence(newPresence)
     if (!payload) return
@@ -59,14 +100,22 @@ export function setupHandlers(client: Client, redis: RedisService, targetUserId:
       if (oldPayload && JSON.stringify(oldPayload) === JSON.stringify(payload)) return
     }
 
+    if (client.token) await enrichPremiumBadge(client.token, targetUserId, payload)
     await redis.saveUser(targetUserId, payload)
     await redis.publishUpdate(targetUserId, payload)
+  })
+
+  client.on("guildCreate", async (guild: Guild) => {
+    if (guildId && guild.id !== guildId) return
+    console.log(`[Discord] Joined guild: ${guild.name} (${guild.id})`)
+    await fetchAndPublishPresence(client, redis, targetUserId, guild)
   })
 
   client.on("userUpdate", async (_oldUser: User | PartialUser, newUser: User) => {
     if (newUser.id !== targetUserId) return
 
-    const profile = serializeProfileFromUser(newUser)
+    const guild = guildId ? client.guilds.cache.get(guildId) ?? undefined : undefined
+    const profile = serializeProfileFromUser(newUser, guild?.id ?? null)
     const existing = await redis.getUser(targetUserId)
     if (existing) {
       existing.username = profile.username
@@ -77,8 +126,12 @@ export function setupHandlers(client: Client, redis: RedisService, targetUserId:
       existing.accentColor = profile.accentColor
         ? `#${profile.accentColor.toString(16).padStart(6, "0").toUpperCase()}`
         : null
+      existing.badges = profile.badges
+      existing.premiumType = profile.premiumType
+      existing.premiumBadge = profile.premiumBadge
       existing.createdAt = profile.createdAt
       existing.updatedAt = Date.now()
+      if (client.token) await enrichPremiumBadge(client.token, targetUserId, existing)
       await redis.saveUser(targetUserId, existing)
       await redis.publishUpdate(targetUserId, existing)
     }

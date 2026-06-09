@@ -26,6 +26,7 @@ export class RedisService {
       mobile: payload.mobile,
       desktop: payload.desktop,
       web: payload.web,
+      guildId: payload.guildId,
     }))
     multi.set(K.profile(userId), JSON.stringify({
       id: payload.id,
@@ -35,6 +36,7 @@ export class RedisService {
       avatar: payload.avatar,
       banner: payload.banner,
       accentColor: payload.accentColor,
+      guildId: payload.guildId,
       createdAt: payload.createdAt,
     }))
     const expiry = 60 * 60 * 24 * 7

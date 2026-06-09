@@ -14,7 +14,7 @@ export function createBot(env: Env, redis: RedisService): Client {
     ],
   })
 
-  setupHandlers(client, redis, env.DISCORD_USER_ID)
+  setupHandlers(client, redis, env.DISCORD_USER_ID, env.DISCORD_GUILD_ID || undefined)
   return client
 }
 

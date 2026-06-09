@@ -1,5 +1,6 @@
 import type { Presence, User, Activity, ClientUser, GuildMember } from "discord.js"
 import type { DiscordUserPayload, DiscordSpotify, DiscordActivity, DiscordProfile } from "../types/discord"
+import { calculateBoostBadge } from "../lib/discord"
 
 function getAvatarUrl(user: User | ClientUser): string | null {
   return user.avatarURL({ size: 256 }) ?? null
@@ -37,6 +38,26 @@ function serializeSpotify(activity: Activity): DiscordSpotify | null {
   }
 }
 
+function serializeIcon(activity: Activity): string | null {
+  if (activity.icon && activity.applicationId) {
+    return `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${activity.icon}.png`
+  }
+  return activity.assets?.largeImage ?? null
+}
+
+function serializeBadges(user: User | ClientUser): string[] {
+  return user.flags?.toArray() ?? []
+}
+
+function serializePremiumType(user: User | ClientUser): string | null {
+  switch (user.premiumType) {
+    case 1: return "Nitro Classic"
+    case 2: return "Nitro"
+    case 3: return "Nitro Basic"
+    default: return null
+  }
+}
+
 function serializeActivity(activity: Activity): DiscordActivity {
   const act: DiscordActivity = {
     id: (activity as any).id,
@@ -46,6 +67,7 @@ function serializeActivity(activity: Activity): DiscordActivity {
     state: activity.state ?? null,
     emoji: activity.emoji?.name ?? null,
     applicationId: activity.applicationId ?? null,
+    icon: serializeIcon(activity),
     timestamps: activity.timestamps
       ? {
           start: activity.timestamps.start?.getTime() ?? null,
@@ -74,6 +96,7 @@ export function serializePresence(presence: Presence): DiscordUserPayload | null
   const displayName = member && "displayName" in member
     ? (member as GuildMember).displayName
     : user.displayName
+  const guildId = presence.guild?.id ?? null
 
   return {
     id: user.id,
@@ -85,6 +108,11 @@ export function serializePresence(presence: Presence): DiscordUserPayload | null
     accentColor: user.accentColor
       ? `#${user.accentColor.toString(16).padStart(6, "0").toUpperCase()}`
       : null,
+    badges: serializeBadges(user),
+    premiumType: serializePremiumType(user),
+    premiumBadge: null,
+    boostBadge: calculateBoostBadge(member?.premiumSince ?? null),
+    boostedSince: member?.premiumSince?.toISOString() ?? null,
     status: presence.status === "invisible" ? "offline" : presence.status,
     customStatus: customStatusActivity?.state ?? null,
     spotify: spotifyActivity ? serializeSpotify(spotifyActivity) : null,
@@ -92,12 +120,13 @@ export function serializePresence(presence: Presence): DiscordUserPayload | null
     mobile: clientStatus.mobile !== undefined,
     desktop: clientStatus.desktop !== undefined,
     web: clientStatus.web !== undefined,
+    guildId,
     createdAt: user.createdAt?.toISOString() ?? null,
     updatedAt: Date.now(),
   }
 }
 
-export function serializeProfileFromUser(user: User | ClientUser): DiscordProfile {
+export function serializeProfileFromUser(user: User | ClientUser, guildId: string | null = null): DiscordProfile {
   return {
     id: user.id,
     username: user.username,
@@ -106,6 +135,10 @@ export function serializeProfileFromUser(user: User | ClientUser): DiscordProfil
     avatar: getAvatarUrl(user),
     banner: getBannerUrl(user),
     accentColor: user.accentColor ?? null,
+    badges: serializeBadges(user),
+    premiumType: serializePremiumType(user),
+    premiumBadge: null,
+    guildId,
     createdAt: user.createdAt?.toISOString() ?? null,
   }
 }

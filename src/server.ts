@@ -4,6 +4,7 @@ import { validateEnv } from "./types/env"
 import { connectAll, disconnectAll, getClient, getPublisher, getSubscriber } from "./redis/client"
 import { RedisService } from "./redis/service"
 import { createDiscordRoutes } from "./routes/v2/discord"
+import { discordAuth } from "./routes/v2/discord-auth"
 import { createBot, startBot, stopBot, getBot } from "./bot/client"
 
 const env = validateEnv()
@@ -15,6 +16,7 @@ async function main(): Promise<void> {
   const discordPlugin = createDiscordRoutes(redis, subscriber)
 
   app.use(discordPlugin)
+  app.use(discordAuth)
 
   if (env.DISCORD_TOKEN) {
     const bot = createBot(env, redis)
