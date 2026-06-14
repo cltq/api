@@ -1,5 +1,5 @@
 import type { Presence, User, Activity, ClientUser, GuildMember } from "discord.js"
-import type { DiscordUserPayload, DiscordSpotify, DiscordActivity, DiscordProfile } from "../types/discord"
+import type { DiscordUserPayload, DiscordSpotify, DiscordActivity, DiscordProfile, DiscordPrimaryGuild } from "../types/discord"
 import { calculateBoostBadge } from "../lib/discord"
 
 function getAvatarUrl(user: User | ClientUser): string | null {
@@ -43,6 +43,16 @@ function serializeIcon(activity: Activity): string | null {
     return `https://cdn.discordapp.com/app-assets/${activity.applicationId}/${activity.icon}.png`
   }
   return activity.assets?.largeImage ?? null
+}
+
+function serializePrimaryGuild(user: User | ClientUser): DiscordPrimaryGuild | null {
+  if (!user.primaryGuild) return null
+  return {
+    identityGuildId: user.primaryGuild.identityGuildId,
+    identityEnabled: user.primaryGuild.identityEnabled,
+    tag: user.primaryGuild.tag,
+    badge: user.primaryGuild.badge,
+  }
 }
 
 function serializeBadges(user: User | ClientUser): string[] {
@@ -97,6 +107,7 @@ export function serializePresence(presence: Presence): DiscordUserPayload | null
     ? (member as GuildMember).displayName
     : user.displayName
   const guildId = presence.guild?.id ?? null
+  const guildName = presence.guild?.name ?? null
 
   return {
     id: user.id,
@@ -112,6 +123,7 @@ export function serializePresence(presence: Presence): DiscordUserPayload | null
     premiumType: serializePremiumType(user),
     premiumBadge: null,
     boostBadge: calculateBoostBadge(member?.premiumSince ?? null),
+    publicFlags: user.flags?.bitfield ?? 0,
     boostedSince: member?.premiumSince?.toISOString() ?? null,
     status: presence.status === "invisible" ? "offline" : presence.status,
     customStatus: customStatusActivity?.state ?? null,
@@ -121,12 +133,14 @@ export function serializePresence(presence: Presence): DiscordUserPayload | null
     desktop: clientStatus.desktop !== undefined,
     web: clientStatus.web !== undefined,
     guildId,
+    guildName,
+    primaryGuild: serializePrimaryGuild(user),
     createdAt: user.createdAt?.toISOString() ?? null,
     updatedAt: Date.now(),
   }
 }
 
-export function serializeProfileFromUser(user: User | ClientUser, guildId: string | null = null): DiscordProfile {
+export function serializeProfileFromUser(user: User | ClientUser, guildId: string | null = null, guildName: string | null = null): DiscordProfile {
   return {
     id: user.id,
     username: user.username,
@@ -139,6 +153,8 @@ export function serializeProfileFromUser(user: User | ClientUser, guildId: strin
     premiumType: serializePremiumType(user),
     premiumBadge: null,
     guildId,
+    guildName,
+    primaryGuild: serializePrimaryGuild(user),
     createdAt: user.createdAt?.toISOString() ?? null,
   }
 }

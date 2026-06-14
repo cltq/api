@@ -1,5 +1,5 @@
 import type { Redis } from "ioredis"
-import type { DiscordUserPayload, DiscordPresence, DiscordProfile } from "../types/discord"
+import type { DiscordUserPayload, DiscordPresence, DiscordProfile, DiscordPrimaryGuild } from "../types/discord"
 
 const K = {
   user: (id: string) => `discord:user:${id}`,
@@ -8,6 +8,55 @@ const K = {
 }
 
 export const PRESENCE_CHANNEL = "discord:presence"
+
+function migrateProfile(data: Partial<DiscordProfile>): DiscordProfile {
+  return {
+    id: data.id ?? "",
+    username: data.username ?? "",
+    displayName: data.displayName ?? "",
+    globalName: data.globalName ?? null,
+    avatar: data.avatar ?? null,
+    banner: data.banner ?? null,
+    accentColor: data.accentColor ?? null,
+    badges: data.badges ?? [],
+    premiumType: data.premiumType ?? null,
+    premiumBadge: data.premiumBadge ?? null,
+    guildId: data.guildId ?? null,
+    guildName: data.guildName ?? null,
+    primaryGuild: data.primaryGuild ?? null,
+    createdAt: data.createdAt ?? null,
+  }
+}
+
+function migrateUserPayload(data: Partial<DiscordUserPayload>): DiscordUserPayload {
+  return {
+    id: data.id ?? "",
+    username: data.username ?? "",
+    displayName: data.displayName ?? "",
+    globalName: data.globalName ?? null,
+    avatar: data.avatar ?? null,
+    banner: data.banner ?? null,
+    accentColor: data.accentColor ?? null,
+    badges: data.badges ?? [],
+    premiumType: data.premiumType ?? null,
+    premiumBadge: data.premiumBadge ?? null,
+    boostBadge: data.boostBadge ?? null,
+    boostedSince: data.boostedSince ?? null,
+    status: data.status ?? "offline",
+    customStatus: data.customStatus ?? null,
+    spotify: data.spotify ?? null,
+    activities: data.activities ?? [],
+    mobile: data.mobile ?? false,
+    desktop: data.desktop ?? false,
+    web: data.web ?? false,
+    guildId: data.guildId ?? null,
+    guildName: data.guildName ?? null,
+    primaryGuild: data.primaryGuild ?? null,
+    publicFlags: data.publicFlags ?? 0,
+    createdAt: data.createdAt ?? null,
+    updatedAt: data.updatedAt ?? 0,
+  }
+}
 
 export class RedisService {
   constructor(
@@ -36,7 +85,12 @@ export class RedisService {
       avatar: payload.avatar,
       banner: payload.banner,
       accentColor: payload.accentColor,
+      badges: payload.badges,
+      premiumType: payload.premiumType,
+      premiumBadge: payload.premiumBadge,
       guildId: payload.guildId,
+      guildName: payload.guildName,
+      primaryGuild: payload.primaryGuild,
       createdAt: payload.createdAt,
     }))
     const expiry = 60 * 60 * 24 * 7
@@ -48,7 +102,9 @@ export class RedisService {
 
   async getUser(userId: string): Promise<DiscordUserPayload | null> {
     const data = await this.client.get(K.user(userId))
-    return data ? JSON.parse(data) : null
+    if (!data) return null
+    const parsed = JSON.parse(data) as Partial<DiscordUserPayload>
+    return migrateUserPayload(parsed)
   }
 
   async getPresence(userId: string): Promise<DiscordPresence | null> {
@@ -58,7 +114,9 @@ export class RedisService {
 
   async getProfile(userId: string): Promise<DiscordProfile | null> {
     const data = await this.client.get(K.profile(userId))
-    return data ? JSON.parse(data) : null
+    if (!data) return null
+    const parsed = JSON.parse(data) as Partial<DiscordProfile>
+    return migrateProfile(parsed)
   }
 
   async publishUpdate(userId: string, payload: DiscordUserPayload): Promise<void> {

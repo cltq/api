@@ -45,6 +45,8 @@ export interface DiscordProfile {
   premiumType: string | null
   premiumBadge: string | null
   guildId: string | null
+  guildName: string | null
+  primaryGuild: DiscordPrimaryGuild | null
   createdAt: string | null
 }
 
@@ -69,8 +71,18 @@ export interface DiscordUserPayload {
   desktop: boolean
   web: boolean
   guildId: string | null
+  guildName: string | null
+  primaryGuild: DiscordPrimaryGuild | null
+  publicFlags: number
   createdAt: string | null
   updatedAt: number
+}
+
+export interface DiscordPrimaryGuild {
+  identityGuildId: string | null
+  identityEnabled: boolean | null
+  tag: string | null
+  badge: string | null
 }
 
 export interface ApiResponse<T> {

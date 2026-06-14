@@ -2,7 +2,7 @@ import { Elysia } from "elysia"
 import type { Redis } from "ioredis"
 import type { RedisService } from "../../redis/service"
 import { PRESENCE_CHANNEL } from "../../redis/service"
-import type { DiscordUserPayload, ApiResponse } from "../../types/discord"
+import type { DiscordUserPayload, DiscordProfile, ApiResponse } from "../../types/discord"
 
 interface SSEClient {
   userId: string
@@ -19,7 +19,7 @@ const notFound = (id: string): ApiResponse<never> => ({
   error: `User ${id} not found`,
 })
 
-export function createDiscordRoutes(redis: RedisService, subscriber: Redis) {
+export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targetUserId?: string) {
   const clients = new Map<string, SSEClient>()
 
   subscriber.subscribe(PRESENCE_CHANNEL, (err) => {
@@ -89,6 +89,16 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis) {
 
   return new Elysia({ prefix: "/v2/discord" })
     .get(
+      "/users",
+      async () => {
+        if (!targetUserId) return { success: false, error: "No tracked user configured" }
+        const user = await redis.getUser(targetUserId)
+        if (!user) return { success: false, error: "No cached data for tracked user" }
+        return { success: true, data: user } satisfies ApiResponse<DiscordUserPayload>
+      },
+      detail("Get tracked user", "Returns cached data for the configured tracked user."),
+    )
+    .get(
       "/users/:id",
       async ({ params: { id }, set, request }) => {
         const user = await redis.getUser(id)
@@ -108,9 +118,9 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis) {
           set.status = 404
           return notFound(id)
         }
-        return { success: true, data: profile }
+        return { success: true, data: profile } satisfies ApiResponse<DiscordProfile>
       },
-      detail("Get user profile", "Returns cached profile information (username, avatar, banner, accent color)."),
+      detail("Get user profile", "Returns cached profile information (username, avatar, banner, accent color, badges, guild)."),
     )
     .get(
       "/users/:id/presence",
@@ -138,6 +148,45 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis) {
         }
       },
       detail("Get user status", "Returns a lightweight payload with only user ID and current status."),
+    )
+    .get(
+      "/users/:id/badges",
+      async ({ params: { id }, set }) => {
+        const user = await redis.getUser(id)
+        if (!user) {
+          set.status = 404
+          return notFound(id)
+        }
+        return {
+          success: true,
+          data: {
+            id: user.id,
+            badges: user.badges,
+            publicFlags: user.publicFlags,
+          },
+        }
+      },
+      detail("Get user badges", "Returns the user's Discord badges (resolved names) and raw public_flags bitfield."),
+    )
+    .get(
+      "/users/:id/guild",
+      async ({ params: { id }, set }) => {
+        const user = await redis.getUser(id)
+        if (!user) {
+          set.status = 404
+          return notFound(id)
+        }
+        return {
+          success: true,
+          data: {
+            id: user.id,
+            guildId: user.guildId,
+            guildName: user.guildName,
+            primaryGuild: user.primaryGuild,
+          },
+        }
+      },
+      detail("Get user guild info", "Returns the user's current guild context and primary guild (clan) tag."),
     )
     .get(
       "/users/:id/live",

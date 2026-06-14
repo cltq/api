@@ -63,9 +63,10 @@ export function setupHandlers(
       const found = await fetchAndPublishPresence(client, redis, targetUserId, guild)
       if (found) return
 
-      const fallback = serializeProfileFromUser(user, guild?.id ?? null)
+      const fallback = serializeProfileFromUser(user, guild?.id ?? null, guild?.name ?? null)
       const data = {
         ...fallback,
+        publicFlags: user.flags?.bitfield ?? 0,
         accentColor: fallback.accentColor
           ? `#${fallback.accentColor.toString(16).padStart(6, "0").toUpperCase()}`
           : null,
@@ -115,7 +116,7 @@ export function setupHandlers(
     if (newUser.id !== targetUserId) return
 
     const guild = guildId ? client.guilds.cache.get(guildId) ?? undefined : undefined
-    const profile = serializeProfileFromUser(newUser, guild?.id ?? null)
+    const profile = serializeProfileFromUser(newUser, guild?.id ?? null, guild?.name ?? null)
     const existing = await redis.getUser(targetUserId)
     if (existing) {
       existing.username = profile.username
@@ -129,6 +130,8 @@ export function setupHandlers(
       existing.badges = profile.badges
       existing.premiumType = profile.premiumType
       existing.premiumBadge = profile.premiumBadge
+      existing.primaryGuild = profile.primaryGuild
+      existing.publicFlags = newUser.flags?.bitfield ?? 0
       existing.createdAt = profile.createdAt
       existing.updatedAt = Date.now()
       if (client.token) await enrichPremiumBadge(client.token, targetUserId, existing)

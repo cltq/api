@@ -13,7 +13,7 @@ async function main(): Promise<void> {
   await connectAll(env)
   const redis = new RedisService(getClient(), getPublisher())
   const subscriber = getSubscriber()
-  const discordPlugin = createDiscordRoutes(redis, subscriber)
+  const discordPlugin = createDiscordRoutes(redis, subscriber, env.DISCORD_USER_ID)
 
   app.use(discordPlugin)
   app.use(discordAuth)
