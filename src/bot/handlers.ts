@@ -48,7 +48,7 @@ export function setupHandlers(
   targetUserId: string,
   guildId?: string,
 ): void {
-  client.on("ready", async () => {
+  client.on("clientReady", async () => {
     console.log(`[Discord] Bot logged in as ${client.user?.tag}`)
 
     try {
