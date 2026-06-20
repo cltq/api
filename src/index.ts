@@ -4,7 +4,6 @@ import YAML from "js-yaml"
 import { health } from "./routes/health"
 import { time } from "./routes/time"
 import { socialsRoute } from "./routes/socials"
-import { info } from "./routes/info"
 import { promptpay } from "./routes/promptpay"
 
 const app = new Elysia()
@@ -20,11 +19,20 @@ const app = new Elysia()
       },
     }),
   )
-  .get("/", ({ redirect }) => redirect("/docs"))
+  .get("/", () => ({
+    name: "Fumi's Personal API",
+    version: "1.0.0",
+    timezone: "Asia/Bangkok",
+    endpoints: {
+      health: "/health",
+      time: "/time",
+      socials: "/socials/:name",
+      docs: "/docs",
+    },
+  }))
   .use(health)
   .use(time)
   .use(socialsRoute)
-  .use(info)
   .use(promptpay)
 
 app.get("/openapi.yaml", async () => {
