@@ -86,7 +86,7 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targ
 
   return new Elysia({ prefix: "/v2/discord" })
     .get(
-      "/users",
+      "/",
       async () => {
         if (!targetUserId) return { success: false, error: "No tracked user configured" }
         const user = await redis.getUser(targetUserId)
@@ -96,7 +96,7 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targ
       detail("Get tracked user", "Returns cached data for the configured tracked user."),
     )
     .get(
-      "/users/profile",
+      "/profile",
       async ({ set }) => {
         if (!targetUserId) {
           set.status = 404
@@ -112,7 +112,7 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targ
       detail("Get tracked user profile", "Returns cached profile information (username, avatar, banner, accent color, badges, guild)."),
     )
     .get(
-      "/users/presence",
+      "/presence",
       async ({ set }) => {
         if (!targetUserId) {
           set.status = 404
@@ -128,7 +128,7 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targ
       detail("Get tracked user presence", "Returns cached presence data (status, activities, Spotify, devices)."),
     )
     .get(
-      "/users/status",
+      "/status",
       async ({ set }) => {
         if (!targetUserId) {
           set.status = 404
@@ -147,7 +147,7 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targ
       detail("Get tracked user status", "Returns a lightweight payload with only user ID and current status."),
     )
     .get(
-      "/users/badges",
+      "/badges",
       async ({ set }) => {
         if (!targetUserId) {
           set.status = 404
@@ -170,7 +170,7 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targ
       detail("Get tracked user badges", "Returns the user's Discord badges (resolved names) and raw public_flags bitfield."),
     )
     .get(
-      "/users/guild",
+      "/guild",
       async ({ set }) => {
         if (!targetUserId) {
           set.status = 404
@@ -194,7 +194,7 @@ export function createDiscordRoutes(redis: RedisService, subscriber: Redis, targ
       detail("Get tracked user guild info", "Returns the user's current guild context and primary guild (clan) tag."),
     )
     .get(
-      "/users/live",
+      "/live",
       ({ request }) => {
         if (!targetUserId) {
           return new Response(JSON.stringify({ success: false, error: "No tracked user configured" }), {
